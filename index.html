@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr" data-ng-app="orsyp-reports">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="description" content="questionnaire satisfaction Orsyp">
+		<meta name="author" content="Lateral Thoughts">
+		<title>Questionnaire de satisfaction &middot; Orsyp</title>
+		<link rel="stylesheet" type="text/css" href="bootstrap.min.css" />
+		<link rel="stylesheet" type="text/css" href="bootstrap-responsive.min.css" />
+		<link rel="stylesheet" type="text/css" href="custom.css" />
+	</head>
+	<body>
+		<div class="container-fluid" data-ng-controller="orsyp-reports-controller">
+
+			<div class="navbar">
+			    <div class="navbar-inner">
+			        <a class="brand" href="/">Questionnaire</a>
+			        <ul class="nav nav-pills">
+			            <li><a href="https://github.com/LateralThoughts/frontend-training">Sources des exercices</a></li>
+			            <li><a href="http://www.lateral-thoughts.com/">Lateral Thoughts</a></li>
+			        </ul>
+			    </div>
+			</div>
+
+			<div class="row-fluid">
+				<div class="span12">
+					<div class="hero-unit">
+						<h1>Orsyp &middot; questionnaire de satisfaction</h1>
+						<blockquote>Retour des participants à la formation frontend du 22 &amp; 23 avril</blockquote>
+					</div>
+				</div>
+
+				<div class="offset1 span10">
+					<div class="well">
+						<h3>Notation</h3>
+						<ul>
+							<li>1 = insatisfaisant / pas d'accord</li>
+							<li>2 = moyen / mitigé</li>
+							<li>3 = bien / oui</li>
+							<li>4 = très bien / oui et même plus</li>
+						</ul>
+					</div>
+					
+					<h3>Questions à choix multiples</h3>
+					<ol>
+						<li data-ng-repeat="question in questions">{{question}}</li>
+					</ol>
+				</div>	
+			
+				<div class="offset1 span10">
+					<p class="well" data-ng-cloak>Moyenne générale: {{avg|number:2}}</p>
+					<div class="chart" survey-chart="responses"></div>
+				</div>
+			
+				<div class="offset1 span10">
+					<h3>Avec une directive Angular custom en prime !</h3>
+					<pre data-ng-cloak>{{directiveCode}}</pre>
+				</div>
+			</div>
+
+		</div>
+
+
+		<script type="text/javascript" src="jquery.js"></script>
+		<script type="text/javascript" src="angular.min.js"></script>
+		<script type="text/javascript" src="underscore.min.js"></script>
+		<script type="text/javascript" src="highcharts.js"></script>
+		<script type="text/javascript" src="pretty.js"></script>
+		<script type="text/javascript">
+			(function() {
+			/*
+			 * for once, this is exposed in the highest scope, as this function toString
+			 * will be used in the controller-managed scope
+			 */
+			var surveyChartDirective = function() {
+				"use strict";
+			    return {
+			    	//usable only as an attribute
+			    	restrict: 'A',
+                	link: function(scope, element, attrs) {
+                		// attach listener to bound scope 'responses' property
+                		scope.$watch('responses', function(currentResponses) {
+                			var colors = Highcharts.getOptions().colors,
+                				questions = scope.questions,
+                				questionCount = questions.length;
+
+	                        $(element).highcharts({
+								chart: {
+				            		type: 'column'
+					            },
+					            title: {
+					                text: 'Formation frontend Orsyp - 22 & 23 avril - Lateral Thoughts'
+					            },
+					            series: [{
+					            	name: 'Moyenne des réponses',
+					            	data: _.map(_.range(0, questionCount), function(index) {
+					            		return {
+					            			//scope.answerAvg is defined in the controller ;)
+					            			y: scope.answerAvg(index),
+					            			color: colors[(index % colors.length)]
+					            		};
+					            	})
+					            }],
+					            xAxis: {
+					            	categories: _.map(_.range(0, questionCount), function(index) {
+					            		return questions[index];
+					            	})
+					            }
+							});
+	                    }, true );
+					}
+			    };
+			};
+
+			angular.module('orsyp-reports', [])
+				// basic controller
+				.controller('orsyp-reports-controller', function($scope) {
+					"use strict";
+					var questions = $scope.questions = [
+						"cette session de formation a amélioré vos connaissances frontend",
+						"cette session de formation a répondu à mes attentes et besoins professionnels",
+						"les exercices étaient intéressants et m'ont permis de progresser",
+						"les échanges avec les formateurs étaient intéressants et m'ont permis mieux comprendre",
+						"le support de formation (les slides) était de bonne qualité et compréhensible",
+						"au global, le contenu était intéressant",
+						"la durée de la formation était bien adaptée (précisez la durée souhaitée si vous n'êtes pas d'accord)",
+						"le rythme (temps passé sur chaque section et temps de pause) était adapté"
+					],
+					responses = $scope.responses = [
+						[4, 4, 4, 3, 4, 4, 4, 4],
+						[3, 3, 3, 4, 3, 3, 3, 3],
+						[4, 4, 3, 4, 3, 4, 3, 3],
+						[3, 3, 3, 2, 2, 2, 2, 4],
+						[3, 3, 3, 4, 3, 3, 3, 3],
+						[3, 2, 3, 3, 2, 3, 3, 2],
+						[4, 4, 3, 4, 4, 4, 3, 2],
+						[4, 4, 4, 4, 3, 4, 3, 3],
+						[4, 3, 3, 4, 4, 3, 3, 2],
+						[3, 3, 3, 3, 2, 3, 3, 3],
+						[4, 3, 3, 4, 3, 3, 3, 3],
+						[4, 3, 3, 4, 3, 3, 2.5, 3]
+					],
+					totalAnswers = _.flatten(responses).length;
+
+					$scope.avg = _.reduce(responses, function(accumulator, answers) {
+						return accumulator + _.reduce(answers, function(accumulator, answer) {
+							return accumulator + answer / totalAnswers;
+						}, 0);
+					}, 0);
+
+					$scope.answerArray = function(i) {
+						return _.reduce(responses, function(accumulator, answers) {
+							accumulator.push(answers[i]);
+							return accumulator;
+						}, []);
+					};
+
+					$scope.answerAvg = function(i) {
+						return _.reduce(responses, function(accumulator, answers) {
+							return accumulator + answers[i] / responses.length; 
+						}, 0);
+					};
+
+					$scope.directiveCode = js_beautify(surveyChartDirective.toString());
+				})
+				// directive names are declared camel-case! 
+				.directive('surveyChart', surveyChartDirective);
+		})();
+		</script>
+	</body>
+</html>
